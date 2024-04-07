@@ -3,14 +3,13 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>ZCL_CTXFREEGRAM2</CLSNAME>
+    <CLSNAME>ZCL_CTXFREEGRAM_TOKENIZER_1C</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>Context-Free Grammar</DESCRIPT>
+    <DESCRIPT>Tokenizer one token = one character</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>
     <UNICODE>X</UNICODE>
-    <WITH_UNIT_TESTS>X</WITH_UNIT_TESTS>
    </VSEOCLASS>
   </asx:values>
  </asx:abap>

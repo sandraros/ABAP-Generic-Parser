@@ -1,7 +1,7 @@
 CLASS zcl_ctxfreegram_factory DEFINITION
   PUBLIC
   FINAL
-  CREATE PUBLIC .
+  CREATE PRIVATE .
 
   PUBLIC SECTION.
 
@@ -11,17 +11,17 @@ CLASS zcl_ctxfreegram_factory DEFINITION
       RETURNING
         VALUE(r_result) TYPE REF TO zcl_ctxfreegram_factory.
 
-    METHODS new_sequence
-      IMPORTING
-        elements        TYPE ty_elements
-      RETURNING
-        VALUE(r_result) TYPE REF TO zif_ctxfreegram_rule_seq.
-
     METHODS new_nonterminal
       IMPORTING
         nonterminal     TYPE string
       RETURNING
         VALUE(r_result) TYPE REF TO zif_ctxfreegram_rule_nonterm.
+
+    METHODS new_sequence
+      IMPORTING
+        elements        TYPE ty_elements
+      RETURNING
+        VALUE(r_result) TYPE REF TO zif_ctxfreegram_rule_seq.
 
     METHODS new_terminal
       IMPORTING
@@ -46,6 +46,14 @@ ENDCLASS.
 CLASS zcl_ctxfreegram_factory IMPLEMENTATION.
 
 
+  METHOD create.
+    IF singleton IS NOT BOUND.
+      singleton = NEW zcl_ctxfreegram_factory( ).
+    ENDIF.
+    r_result = singleton.
+  ENDMETHOD.
+
+
   METHOD new_nonterminal.
     r_result = NEW lcl_nonterminal( nonterminal ).
   ENDMETHOD.
@@ -58,14 +66,6 @@ CLASS zcl_ctxfreegram_factory IMPLEMENTATION.
 
   METHOD new_terminal.
     r_result = NEW lcl_terminal( terminal ).
-  ENDMETHOD.
-
-
-  METHOD create.
-    IF singleton IS NOT BOUND.
-      singleton = NEW zcl_ctxfreegram_factory( ).
-    ENDIF.
-    r_result = singleton.
   ENDMETHOD.
 
 

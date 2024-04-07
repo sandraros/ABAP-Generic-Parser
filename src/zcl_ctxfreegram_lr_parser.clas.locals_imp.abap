@@ -11,27 +11,39 @@ CLASS lcl_args IMPLEMENTATION.
   ENDMETHOD.
 ENDCLASS.
 
-CLASS lcl_default_lexer DEFINITION.
-  PUBLIC SECTION.
-    INTERFACES zif_ctxfreegram_lexer.
-    METHODS constructor
-      IMPORTING
-        text TYPE string.
-  PRIVATE SECTION.
-    DATA: text   TYPE string,
-          offset TYPE i.
+CLASS lcl_token_end_of_input IMPLEMENTATION.
+
+  METHOD create.
+    result = NEW lcl_token_end_of_input( ).
+    result->text   = text.
+  ENDMETHOD.
+
+  METHOD zif_ctxfreegram_token~get_text.
+    result = text.
+  ENDMETHOD.
+
+  METHOD zif_ctxfreegram_token~get_detailed_info.
+    result = 'End of input'.
+  ENDMETHOD.
+
 ENDCLASS.
-CLASS lcl_default_lexer IMPLEMENTATION.
-  METHOD constructor.
-    me->text = text.
-    me->offset = 0.
+
+CLASS lcl_parsed_nonterminal IMPLEMENTATION.
+
+  METHOD create.
+    result = new lcl_parsed_nonterminal( ).
+    result->rule_number = rule_number.
+    result->child_symbols = child_symbols.
   ENDMETHOD.
-  METHOD zif_ctxfreegram_lexer~get_next_token.
-    IF offset >= strlen( text ).
-      RAISE EXCEPTION TYPE zcx_ctxfreegram EXPORTING error = zcx_ctxfreegram=>c_error-parse_end_of_file.
-    ENDIF.
-    r_token-offset = offset.
-    r_token-length = 1.
-    ADD 1 TO offset.
+
+ENDCLASS.
+
+CLASS lcl_parsed_terminal IMPLEMENTATION.
+
+  METHOD create.
+    result = new lcl_parsed_terminal( ).
+    result->token = token.
+*    result->terminal_index = terminal_index.
   ENDMETHOD.
+
 ENDCLASS.
