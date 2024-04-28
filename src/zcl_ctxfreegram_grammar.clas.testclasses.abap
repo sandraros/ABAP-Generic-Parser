@@ -20,11 +20,13 @@ CLASS ltc_main DEFINITION
     METHODS missing_start_rule FOR TESTING RAISING cx_static_check.
     METHODS optional FOR TESTING RAISING cx_static_check.
     METHODS optional_b_in_abc FOR TESTING RAISING cx_static_check.
+    METHODS regex FOR TESTING RAISING cx_static_check.
+    METHODS repetition_kleene_star FOR TESTING RAISING cx_static_check.
+    METHODS repetition_kleene_plus FOR TESTING RAISING cx_static_check.
     METHODS rhs_nonterminal_wo_lhs FOR TESTING RAISING cx_static_check.
     METHODS start_rule_twice FOR TESTING RAISING cx_static_check.
     METHODS unique_rule_one_character FOR TESTING RAISING cx_static_check.
     METHODS unique_rule_two_characters FOR TESTING RAISING cx_static_check.
-    METHODS while_and_regex FOR TESTING RAISING cx_static_check.
     METHODS wikipedia_example FOR TESTING RAISING cx_static_check.
 ENDCLASS.
 
@@ -35,6 +37,18 @@ CLASS ltc_tokenizer DEFINITION
   PRIVATE SECTION.
     METHODS test FOR TESTING RAISING cx_static_check.
 ENDCLASS.
+
+CLASS lth_string_table_utilities DEFINITION
+    FINAL
+    CREATE PRIVATE.
+  PUBLIC SECTION.
+    CLASS-METHODS convert_without_trailing_blank
+      IMPORTING
+        string_table  TYPE string_table
+      RETURNING
+        VALUE(result) TYPE string_table.
+ENDCLASS.
+
 
 CLASS ltc_create_from_string_table IMPLEMENTATION.
 
@@ -80,10 +94,10 @@ CLASS ltc_create_from_string_table IMPLEMENTATION.
                 |8  r2   r2   r2                            \n| &&
                 |9  r3   r3   r3                            \n|.
 
-    cl_abap_unit_assert=>assert_equals( act = grammar->render_action_goto_tables( )
+    cl_abap_unit_assert=>assert_equals( act = grammar->render_action_goto_table( )
                                         exp = exp ).
 
-    cl_abap_unit_assert=>assert_equals( act = grammar_2->render_action_goto_tables( )
+    cl_abap_unit_assert=>assert_equals( act = grammar_2->render_action_goto_table( )
                                         exp = exp ).
 
   ENDMETHOD.
@@ -144,7 +158,7 @@ CLASS ltc_main IMPLEMENTATION.
     DATA(follow_sets) = grammar->render_follow_sets( ).
     DATA(item_sets) = grammar->render_item_sets( ).
     DATA(transitions) = grammar->render_transitions( ).
-    DATA(action_goto_tables) = grammar->render_action_goto_tables( ).
+    DATA(action_goto_table) = grammar->render_action_goto_table( ).
 
     cl_abap_unit_assert=>assert_equals( act = item_sets exp =
         |* Item set 1:\n| &
@@ -160,7 +174,7 @@ CLASS ltc_main IMPLEMENTATION.
         |1       2           3         \n| &
         |2                             \n| &
         |3                             \n| ).
-    cl_abap_unit_assert=>assert_equals( act = action_goto_tables exp =
+    cl_abap_unit_assert=>assert_equals( act = action_goto_table exp =
         |   '$'  'a'  start  optional  \n| &
         |1  r3   s2          3         \n| &
         |2  r2                         \n| &
@@ -177,15 +191,153 @@ CLASS ltc_main IMPLEMENTATION.
                     ( `optional: 'b'  ` )
                     ( `optional:      ` ) ) ).
 
-    DATA(action_goto_tables) = grammar->render_action_goto_tables( ).
+    DATA(action_goto_table) = grammar->render_action_goto_table( ).
 
-    cl_abap_unit_assert=>assert_equals( act = action_goto_tables exp =
+    cl_abap_unit_assert=>assert_equals( act = action_goto_table exp =
         |   '$'  'a'  'c'  'b'  start  optional  \n| &
         |1       s2                              \n| &
         |2            r3   s3          4         \n| &
         |3            r2                         \n| &
         |4            s5                         \n| &
         |5  acc                                  \n| ).
+
+  ENDMETHOD.
+
+  METHOD regex.
+
+    " start: 'regex:[a-zA-Z_][a-zA-Z_0-9]*'
+
+    DATA(factory) = zcl_ctxfreegram_factory=>create( ).
+    DATA(start) = factory->new_nonterminal( 'start' ).
+    DATA(regex) = factory->new_terminal_regex( '[a-zA-Z_][a-zA-Z_0-9]*' ).
+
+    DATA(grammar) = zcl_ctxfreegram_grammar=>create(
+        start_rule = start
+        rules      = VALUE #(
+                    ( lhs = start
+                      rhs = regex ) ) ).
+
+    DATA(item_sets) = grammar->render_item_sets( ).
+    DATA(action_goto_table) = grammar->render_action_goto_table( ).
+
+    cl_abap_unit_assert=>assert_equals(
+        act = item_sets
+        exp = |* Item set 1:\n|
+           && |** Item kernel: start = ◆ '[a-zA-Z_][a-zA-Z_0-9]*'\n| ).
+    cl_abap_unit_assert=>assert_equals( act = action_goto_table exp =
+        |   '$'  start  \n| &&
+        |1  acc         \n| ).
+
+  ENDMETHOD.
+
+  METHOD repetition_kleene_plus.
+
+    " The below rules are similar to "start: repetition_kleene_plus+" in grammars which accept Kleene plus.
+    "
+    " start: repetition_kleene_plus
+    " repetition_kleene_plus: repeated_group repetition_kleene_plus
+    " repetition_kleene_plus: repeated_group
+    " repeated_group: 'a'
+
+    DATA(factory) = zcl_ctxfreegram_factory=>create( ).
+    DATA(start) = factory->new_nonterminal( 'start' ).
+    DATA(repetition_kleene_plus) = factory->new_nonterminal( 'repetition_kleene_plus' ).
+    DATA(repeated_group) = factory->new_nonterminal( 'repeated_group' ).
+    DATA(a) = factory->new_terminal( 'a' ).
+
+    DATA(grammar) = zcl_ctxfreegram_grammar=>create(
+        start_rule = start
+        rules = VALUE #(
+            ( lhs = start                   rhs = repetition_kleene_plus )
+            ( lhs = repetition_kleene_plus  rhs = factory->new_sequence( VALUE #( ( repeated_group ) ( repetition_kleene_plus ) ) ) )
+            ( lhs = repetition_kleene_plus  rhs = repeated_group )
+            ( lhs = repeated_group          rhs = a ) ) ).
+
+    DATA(item_sets) = grammar->render_item_sets( ).
+    DATA(action_goto_table) = grammar->render_action_goto_table( ).
+
+    cl_abap_unit_assert=>assert_equals(
+        act = item_sets
+        exp = |* Item set 1:\n|
+           && |** Item kernel: start = ◆ repetition_kleene_plus\n|
+           && |** Item closure: repetition_kleene_plus = ◆ repeated_group repetition_kleene_plus\n|
+           && |** Item closure: repetition_kleene_plus = ◆ repeated_group\n|
+           && |** Item closure: repeated_group = ◆ 'a'\n|
+           && |* Item set 2:\n|
+           && |** Item kernel: repeated_group = 'a' ◆\n|
+           && |* Item set 3:\n|
+           && |** Item kernel: start = repetition_kleene_plus ◆\n|
+           && |* Item set 4:\n|
+           && |** Item kernel: repetition_kleene_plus = repeated_group ◆ repetition_kleene_plus\n|
+           && |** Item kernel: repetition_kleene_plus = repeated_group ◆\n|
+           && |** Item closure: repetition_kleene_plus = ◆ repeated_group repetition_kleene_plus\n|
+           && |** Item closure: repetition_kleene_plus = ◆ repeated_group\n|
+           && |** Item closure: repeated_group = ◆ 'a'\n|
+           && |* Item set 5:\n|
+           && |** Item kernel: repetition_kleene_plus = repeated_group repetition_kleene_plus ◆\n| ).
+    cl_abap_unit_assert=>assert_equals( act = action_goto_table exp =
+        |   '$'  'a'  start  repetition_kleene_plus  repeated_group  \n| &&
+        |1       s2          3                       4               \n| &&
+        |2  r4   r4                                                  \n| &&
+        |3  acc                                                      \n| &&
+        |4  r3   s2          5                       4               \n| &&
+        |5  r2                                                       \n| ).
+
+  ENDMETHOD.
+
+  METHOD repetition_kleene_star.
+
+    " The below rules are similar to "start: repetition_kleene_star*" in grammars which accept Kleene star.
+    "
+    " start: repetition_kleene_star
+    " repetition_kleene_star: repeated_group repetition_kleene_star
+    " repetition_kleene_star: repeated_group
+    " repeated_group: 'a'
+
+    DATA(factory) = zcl_ctxfreegram_factory=>create( ).
+    DATA(start) = factory->new_nonterminal( 'start' ).
+    DATA(repetition_kleene_star) = factory->new_nonterminal( 'repetition_kleene_star' ).
+    DATA(repeated_group) = factory->new_nonterminal( 'repeated_group' ).
+    DATA(a) = factory->new_terminal( 'a' ).
+
+    DATA(grammar) = zcl_ctxfreegram_grammar=>create(
+        start_rule = start
+        rules = VALUE #(
+            ( lhs = start                   rhs = repetition_kleene_star )
+            ( lhs = repetition_kleene_star  rhs = factory->new_sequence( VALUE #( ( repeated_group ) ( repetition_kleene_star ) ) ) )
+            ( lhs = repetition_kleene_star  rhs = VALUE #( ) )
+            ( lhs = repeated_group          rhs = a ) ) ).
+
+    DATA(item_sets) = grammar->render_item_sets( ).
+    DATA(action_goto_table) = grammar->render_action_goto_table( ).
+
+    cl_abap_unit_assert=>assert_equals(
+        act = item_sets
+        exp = |* Item set 1:\n|
+           && |** Item kernel: start = ◆ repetition_kleene_star\n|
+           && |** Item closure: repetition_kleene_star = ◆ repeated_group repetition_kleene_star\n|
+           && |** Item closure: repetition_kleene_star = ◆\n|
+           && |** Item closure: repeated_group = ◆ 'a'\n|
+           && |* Item set 2:\n|
+           && |** Item kernel: repeated_group = 'a' ◆\n|
+           && |* Item set 3:\n|
+           && |** Item kernel: start = repetition_kleene_star ◆\n|
+           && |* Item set 4:\n|
+           && |** Item kernel: repetition_kleene_star = repeated_group ◆ repetition_kleene_star\n|
+           && |** Item closure: repetition_kleene_star = ◆ repeated_group repetition_kleene_star\n|
+           && |** Item closure: repetition_kleene_star = ◆\n|
+           && |** Item closure: repeated_group = ◆ 'a'\n|
+           && |* Item set 5:\n|
+           && |** Item kernel: repetition_kleene_star = repeated_group repetition_kleene_star ◆\n| ).
+    cl_abap_unit_assert=>assert_equals(
+        act = action_goto_table
+        exp =
+        |   '$'  'a'  start  repetition_kleene_star  repeated_group  \n| &&
+        |1  r3   s2          3                       4               \n| &&
+        |2  r4   r4                                                  \n| &&
+        |3  acc                                                      \n| &&
+        |4  r3   s2          5                       4               \n| &&
+        |5  r2                                                       \n| ).
 
   ENDMETHOD.
 
@@ -234,7 +386,7 @@ CLASS ltc_main IMPLEMENTATION.
 
     DATA(item_sets) = grammar->render_item_sets( ).
     DATA(transitions) = grammar->render_transitions( ).
-    DATA(action_goto_tables) = grammar->render_action_goto_tables( ).
+    DATA(action_goto_table) = grammar->render_action_goto_table( ).
 
     cl_abap_unit_assert=>assert_equals( act = item_sets exp =
         |* Item set 1:\n| &
@@ -245,7 +397,7 @@ CLASS ltc_main IMPLEMENTATION.
         |   '$'  'a'  start  \n| &
         |1       2           \n| &
         |2                   \n| ).
-    cl_abap_unit_assert=>assert_equals( act = action_goto_tables exp =
+    cl_abap_unit_assert=>assert_equals( act = action_goto_table exp =
         |   '$'  'a'  start  \n| &
         |1       s2          \n| &
         |2  acc              \n| ).
@@ -265,7 +417,7 @@ CLASS ltc_main IMPLEMENTATION.
 
     DATA(item_sets) = grammar->render_item_sets( ).
     DATA(transitions) = grammar->render_transitions( ).
-    DATA(action_goto_tables) = grammar->render_action_goto_tables( ).
+    DATA(action_goto_table) = grammar->render_action_goto_table( ).
 
     cl_abap_unit_assert=>assert_equals( act = item_sets exp =
         |* Item set 1:\n| &
@@ -279,45 +431,11 @@ CLASS ltc_main IMPLEMENTATION.
         |1       2           \n| &
         |2       3           \n| &
         |3                   \n| ).
-    cl_abap_unit_assert=>assert_equals( act = action_goto_tables exp =
+    cl_abap_unit_assert=>assert_equals( act = action_goto_table exp =
         |   '$'  'a'  start  \n| &
         |1       s2          \n| &
         |2       s3          \n| &
         |3  acc              \n| ).
-
-  ENDMETHOD.
-
-  METHOD while_and_regex.
-
-    " start: while
-    " while: 'while' condition
-    " condition: variable '=' number
-    " variable: 'regex:[a-zA-Z_][a-zA-Z_0-9]*'
-    " number: 'regex:[0-9][0-9]*'
-
-    DATA(factory) = zcl_ctxfreegram_factory=>create( ).
-    DATA(start) = factory->new_nonterminal( 'start' ).
-    DATA(while) = factory->new_nonterminal( 'while' ).
-    DATA(condition) = factory->new_nonterminal( 'condition' ).
-    DATA(_while) = factory->new_terminal( 'while' ).
-    DATA(variable) = factory->new_nonterminal( 'variable' ).
-    DATA(variable_regex) = factory->new_terminal_regex( '[a-zA-Z_][a-zA-Z_0-9]*' ).
-    DATA(equal) = factory->new_terminal( '=' ).
-    DATA(number) = factory->new_nonterminal( 'number' ).
-    DATA(number_regex) = factory->new_terminal_regex( '[0-9][0-9]*' ).
-
-    DATA(grammar) = zcl_ctxfreegram_grammar=>create(
-        start_rule = start
-        rules = VALUE #(
-            ( lhs = start     rhs = while )
-            ( lhs = while     rhs = factory->new_sequence( VALUE #( ( _while ) ( condition ) ) ) )
-            ( lhs = condition rhs = factory->new_sequence( VALUE #( ( variable ) ( equal ) ( number ) ) ) )
-            ( lhs = variable  rhs = variable_regex )
-            ( lhs = number    rhs = number_regex ) ) ).
-
-    DATA(item_sets) = grammar->render_item_sets( ).
-    DATA(transitions) = grammar->render_transitions( ).
-    DATA(action_goto_tables) = grammar->render_action_goto_tables( ).
 
   ENDMETHOD.
 
@@ -348,7 +466,11 @@ CLASS ltc_main IMPLEMENTATION.
             ( lhs = b     rhs = _0 )
             ( lhs = b     rhs = _1 ) ) ).
 
-    cl_abap_unit_assert=>assert_equals( act = grammar->render_item_sets( ) exp =
+    DATA(item_sets) = grammar->render_item_sets( ).
+    DATA(transitions) = grammar->render_transitions( ).
+    DATA(action_goto_table) = grammar->render_action_goto_table( ).
+
+    cl_abap_unit_assert=>assert_equals( act = item_sets exp =
         |* Item set 1:\n| &&
         |** Item kernel: start = ◆ E\n| &&
         |** Item closure: E = ◆ E '*' B\n| &&
@@ -378,7 +500,7 @@ CLASS ltc_main IMPLEMENTATION.
         |** Item kernel: E = E '*' B ◆\n| &&
         |* Item set 9:\n| &&
         |** Item kernel: E = E '+' B ◆\n| ).
-    cl_abap_unit_assert=>assert_equals( act = grammar->render_transitions( ) exp =
+    cl_abap_unit_assert=>assert_equals( act = transitions exp =
         |   '$'  '*'  '+'  '0'  '1'  start  E   B   \n| &&
         |1                 2    3           4   5   \n| &&
         |2                                          \n| &&
@@ -395,7 +517,7 @@ CLASS ltc_main IMPLEMENTATION.
     " E: B
     " B: '0'
     " B: '1'
-    cl_abap_unit_assert=>assert_equals( act = grammar->render_action_goto_tables( ) exp =
+    cl_abap_unit_assert=>assert_equals( act = action_goto_table exp =
         |   '$'  '*'  '+'  '0'  '1'  start  E   B   \n| &&
         |1                 s2   s3          4   5   \n| &&
         |2  r5   r5   r5                            \n| &&
@@ -429,9 +551,9 @@ CLASS ltc_tokenizer IMPLEMENTATION.
                             ( `nonspace: 'x'` )
                             ( `space: ' '` ) ) ).
 
-    DATA(act) = grammar->render_action_goto_tables( ).
+    DATA(act) = grammar->render_action_goto_table( ).
 
-    cl_abap_unit_assert=>assert_equals( act = grammar->render_action_goto_tables( ) exp =
+    cl_abap_unit_assert=>assert_equals( act = grammar->render_action_goto_table( ) exp =
         |    '$'  'x'  ' '  start  tokens  token  nonspaces  spaces  nonspace  space  \n| &&
         |1        s2   s3          4       5      6          7       8         9      \n| &&
         |2   r10  r10  r10                                                            \n| &&
@@ -447,4 +569,13 @@ CLASS ltc_tokenizer IMPLEMENTATION.
         |12  r8   r8   r8                                                             \n| ).
   ENDMETHOD.
 
+ENDCLASS.
+
+CLASS lth_string_table_utilities IMPLEMENTATION.
+  METHOD convert_without_trailing_blank.
+    result = string_table.
+    LOOP AT result REFERENCE INTO DATA(line).
+      cl_abap_string_utilities=>del_trailing_blanks( CHANGING str = line->* ).
+    ENDLOOP.
+  ENDMETHOD.
 ENDCLASS.

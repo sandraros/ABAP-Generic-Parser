@@ -160,7 +160,7 @@ CLASS zcl_ctxfreegram_grammar DEFINITION
       RAISING
         zcx_ctxfreegram.
 
-    METHODS render_action_goto_tables
+    METHODS render_action_goto_table
       RETURNING
         VALUE(result) TYPE string.
 
@@ -519,11 +519,11 @@ CLASS zcl_ctxfreegram_grammar IMPLEMENTATION.
     "  )
     LOOP AT aut_transition ASSIGNING <ls_transition>
          WHERE s_symbol-type = zcl_ctxfreegram_grammar=>lcs_symbol_type-terminal.
-      APPEND INITIAL LINE TO aut_action ASSIGNING <ls_action>.
-      <ls_action>-state          = <ls_transition>-item_set_index.
-      <ls_action>-terminal_index = <ls_transition>-s_symbol-index.
-      <ls_action>-action         = lcs_action-shift.
-      <ls_action>-index          = <ls_transition>-goto_item_set_index.
+      INSERT VALUE #( state          = <ls_transition>-item_set_index
+                      terminal_index = <ls_transition>-s_symbol-index
+                      action         = lcs_action-shift
+                      index          = <ls_transition>-goto_item_set_index )
+          INTO TABLE aut_action.
     ENDLOOP.
 
     " Part 2 of action determination  = list of REDUCE
@@ -543,11 +543,11 @@ CLASS zcl_ctxfreegram_grammar IMPLEMENTATION.
         IF sy-subrc = 0 AND 0 = lines( <ls_rule>-t_symbol ).
           LOOP AT aut_follow_set ASSIGNING <ls_follow_set> WHERE symbol = <ls_item>-s_dot_symbol.
             LOOP AT <ls_follow_set>-t_follow_symbol ASSIGNING <ls_symbol>.
-              APPEND INITIAL LINE TO aut_action ASSIGNING <ls_action>.
-              <ls_action>-state          = <ls_item_set>-index.
-              <ls_action>-terminal_index = <ls_symbol>-index.
-              <ls_action>-action         = lcs_action-reduce.
-              <ls_action>-index          = <ls_rule>-index.
+              INSERT VALUE #( state          = <ls_item_set>-index
+                              terminal_index = <ls_symbol>-index
+                              action         = lcs_action-reduce
+                              index          = <ls_rule>-index )
+                  INTO TABLE aut_action.
             ENDLOOP.
           ENDLOOP.
         ENDIF.
@@ -561,16 +561,15 @@ CLASS zcl_ctxfreegram_grammar IMPLEMENTATION.
                       symbol-index = <ls_item>-lhs_nonterm_index.
         ASSERT sy-subrc = 0.
         LOOP AT <ls_follow_set>-t_follow_symbol ASSIGNING <ls_symbol>.
-          APPEND INITIAL LINE TO aut_action ASSIGNING <ls_action>.
-          <ls_action>-state          = <ls_item_set>-index.
-          <ls_action>-terminal_index = <ls_symbol>-index.
-          IF <ls_item>-rule_index = 1.
-            <ls_action>-action = lcs_action-accept.
-            <ls_action>-index  = 0.
-          ELSE.
-            <ls_action>-action = lcs_action-reduce.
-            <ls_action>-index  = <ls_item>-rule_index.
-          ENDIF.
+          INSERT VALUE #( state          = <ls_item_set>-index
+                          terminal_index = <ls_symbol>-index
+                          action         = COND #( WHEN <ls_item>-rule_index = 1
+                                                   then lcs_action-accept
+                                                   else lcs_action-reduce )
+                          index          = COND #( WHEN <ls_item>-rule_index = 1
+                                                   then 0
+                                                   else <ls_item>-rule_index ) )
+              INTO TABLE aut_action.
         ENDLOOP.
       ENDLOOP.
     ENDLOOP.
@@ -1449,7 +1448,7 @@ CLASS zcl_ctxfreegram_grammar IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
-  METHOD render_action_goto_tables.
+  METHOD render_action_goto_table.
 *    DATA ref_table TYPE REF TO data.
 
     FIELD-SYMBOLS <actions> TYPE STANDARD TABLE.

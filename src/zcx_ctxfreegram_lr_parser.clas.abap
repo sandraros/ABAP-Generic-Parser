@@ -7,14 +7,15 @@ CLASS zcx_ctxfreegram_lr_parser DEFINITION
   PUBLIC SECTION.
 
     TYPES: BEGIN OF ENUM ty_error STRUCTURE c_error,
-             parse_unexpected,
-             parse_token_not_in_grammar,
-             parse_unexpected_token_state,
              parse_bug_rule_not_found,
              parse_bug_rule_without_element,
              parse_bug_stack_processing,
              parse_bug_goto_not_found,
+             parse_bug_unexpected,
              parse_end_of_file,
+             parse_token_not_in_grammar,
+             parse_unexpected,
+             parse_unexpected_token,
            END OF ENUM ty_error STRUCTURE c_error.
 
     METHODS constructor
@@ -56,7 +57,7 @@ CLASS zcx_ctxfreegram_lr_parser IMPLEMENTATION.
     IF collect_details = abap_true.
       diagnosis_helper = lr_parser->grammar->render_rules( )
                       && |\n|
-                      && lr_parser->grammar->render_action_goto_tables( ).
+                      && lr_parser->grammar->render_action_goto_table( ).
     ENDIF.
   ENDMETHOD.
 
@@ -67,7 +68,7 @@ CLASS zcx_ctxfreegram_lr_parser IMPLEMENTATION.
         result = 'Unexpected error'(017).
       WHEN c_error-parse_token_not_in_grammar.
         result = 'Token not in grammar &1'(005).
-      WHEN c_error-parse_unexpected_token_state.
+      WHEN c_error-parse_unexpected_token.
         result = 'Unexpected token &1 at state &2'(018).
       WHEN c_error-parse_bug_rule_not_found.
         result = 'Bug rule not found'(006).
@@ -77,6 +78,8 @@ CLASS zcx_ctxfreegram_lr_parser IMPLEMENTATION.
         result = 'Bug in stack management'(008).
       WHEN c_error-parse_bug_goto_not_found.
         result = 'Bug in GOTO management'(009).
+      WHEN c_error-parse_bug_unexpected.
+        result = 'Bug unexpected'(020).
       WHEN c_error-parse_end_of_file.
         result = 'End of file'(010).
     ENDCASE.

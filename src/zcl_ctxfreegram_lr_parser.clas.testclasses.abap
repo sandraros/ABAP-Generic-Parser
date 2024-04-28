@@ -7,8 +7,7 @@ CLASS ltc_errors DEFINITION
 
   PRIVATE SECTION.
 
-    METHODS unexpected_token_at_state FOR TESTING RAISING cx_static_check.
-    METHODS token_not_in_grammar FOR TESTING RAISING cx_static_check.
+    METHODS unexpected_token FOR TESTING RAISING cx_static_check.
 
 ENDCLASS.
 
@@ -88,29 +87,7 @@ ENDCLASS.
 
 CLASS ltc_errors IMPLEMENTATION.
 
-  METHOD token_not_in_grammar.
-
-    DATA(grammar) = zcl_ctxfreegram_grammar=>create_from_string_table(
-                start_rule   = 'start'
-                string_table = VALUE #(
-                    ( `start: 'a'` ) ) ).
-
-    DATA(parser) = zcl_ctxfreegram_lr_parser=>create(
-        io_context_free_grammar = grammar
-        record_trace            = abap_true ).
-
-    TRY.
-        parser->parse( zcl_ctxfreegram_tokenizer_1c=>create_from_string( string = `b` ) ).
-      CATCH zcx_ctxfreegram_lr_parser INTO DATA(error).
-    ENDTRY.
-
-    cl_abap_unit_assert=>assert_bound( act = error
-                                       msg = 'Expected error but no exception raised' ).
-    cl_abap_unit_assert=>assert_equals( act = error->error
-                                        exp = zcx_ctxfreegram_lr_parser=>c_error-parse_token_not_in_grammar ).
-  ENDMETHOD.
-
-  METHOD unexpected_token_at_state.
+  METHOD unexpected_token.
 
     DATA(grammar) = zcl_ctxfreegram_grammar=>create_from_string_table(
                 start_rule   = 'start'
@@ -129,7 +106,7 @@ CLASS ltc_errors IMPLEMENTATION.
     cl_abap_unit_assert=>assert_bound( act = error
                                        msg = 'Expected error but no exception raised' ).
     cl_abap_unit_assert=>assert_equals( act = error->error
-                                        exp = zcx_ctxfreegram_lr_parser=>c_error-parse_unexpected_token_state ).
+                                        exp = zcx_ctxfreegram_lr_parser=>c_error-parse_unexpected_token ).
   ENDMETHOD.
 
 ENDCLASS.

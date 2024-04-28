@@ -236,55 +236,53 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
 
   METHOD get_action.
 
-    DATA(terminal_applies) = abap_false.
+    DATA(error_terminal_does_not_apply) = zcx_ctxfreegram_lr_parser=>c_error-parse_unexpected_token.
     LOOP AT grammar->aut_action REFERENCE INTO DATA(action)
          WHERE state = i_state.
 *           AND terminal_index = i_token-index.
       DATA(terminal) = REF #( grammar->aut_terminal[ action->terminal_index ] OPTIONAL ).
       IF sy-subrc <> 0.
-        RAISE EXCEPTION TYPE zcx_ctxfreegram_lr_parser
-          EXPORTING error     = zcx_ctxfreegram_lr_parser=>c_error-parse_unexpected_token_state
-                    msgv1     = |{ i_token-object->get_detailed_info( ) }| "grammar->aut_terminal[ i_current_terminal_index ]-terminal }|
-                    msgv2     = |{ i_state }|
-                    lr_parser = me.
+        error_terminal_does_not_apply = zcx_ctxfreegram_lr_parser=>c_error-parse_bug_unexpected.
+        EXIT.
       ENDIF.
-      CASE TYPE OF i_token-object.
+      CASE TYPE OF terminal->object.
         WHEN TYPE zif_ctxfreegram_rule_term.
-          IF CAST zif_ctxfreegram_rule_term( i_token-object )->value = i_token-text.
-            terminal_applies = abap_true.
+          IF CAST zif_ctxfreegram_rule_term( terminal->object )->value = i_token-text.
+            error_terminal_does_not_apply = VALUE #( ).
             EXIT.
           ENDIF.
         WHEN TYPE zif_ctxfreegram_rule_termregex.
           IF CAST zif_ctxfreegram_rule_termregex( i_token-object )->applies( i_token-text ).
-            terminal_applies = abap_true.
+            error_terminal_does_not_apply = VALUE #( ).
             EXIT.
           ENDIF.
       ENDCASE.
     ENDLOOP.
-    IF terminal_applies = abap_false.
-*    IF sy-subrc <> 0.
+
+    IF error_terminal_does_not_apply IS NOT INITIAL.
       RAISE EXCEPTION TYPE zcx_ctxfreegram_lr_parser
         EXPORTING
-          error     = zcx_ctxfreegram_lr_parser=>c_error-parse_unexpected_token_state
+          error     = error_terminal_does_not_apply
           msgv1     = |{ i_token-object->get_detailed_info( ) }| "grammar->aut_terminal[ i_current_terminal_index ]-terminal }|
           msgv2     = |{ i_state }|
           lr_parser = me.
     ENDIF.
+
     IF record_trace = abap_true.
       trace( sprintf( format = '  getAction(state &1, lookahead &2) -> &3'
                       args   = arg( i_state )->arg( i_token-text )->arg(
-                          SWITCH string( result->action
+                          SWITCH string( action->action
                                          WHEN lcs_action-shift THEN
-                                           |shift to state { result->index }|
+                                           |shift to state { action->index }|
                                          WHEN lcs_action-reduce THEN
-                                           |reduce rule { result->index } ({ get_rule_text( result->index ) })|
+                                           |reduce rule { action->index } ({ get_rule_text( action->index ) })|
 *          trace_if_active( sprintf( format = |  getRule( &1 ) ---> #symbols in rule = &2 , rule LHS = &3|
 *                                    args   = arg( ls_action->index )->arg( lines( <ls_rule>-t_symbol ) )->arg(
 *                                            grammar->aut_nonterminal[ <ls_rule>-lhs_nonterm_index ]-nonterminal ) ) ).
                                          WHEN lcs_action-accept THEN
                                            |accept|
                                          ELSE
-                                           result->action ) ) ) ).
+                                           action->action ) ) ) ).
     ENDIF.
     result = action.
   ENDMETHOD.
