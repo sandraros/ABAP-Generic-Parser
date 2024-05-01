@@ -27,7 +27,8 @@ CLASS zcl_ctxfreegram_lr_parser DEFINITION
     DATA trace_table  TYPE string_table READ-ONLY.
     DATA record_trace TYPE abap_bool    READ-ONLY.
     DATA ast          TYPE ty_ut_ast    READ-ONLY.
-    DATA grammar TYPE REF TO zcl_ctxfreegram_grammar READ-ONLY.
+    DATA grammar      TYPE REF TO zcl_ctxfreegram_grammar READ-ONLY.
+    DATA symbol_stack TYPE TABLE OF REF TO zif_ctxfreegram_parsed_symbol READ-ONLY.
 
     CLASS-METHODS create
       IMPORTING
@@ -51,8 +52,9 @@ CLASS zcl_ctxfreegram_lr_parser DEFINITION
         zcx_ctxfreegram
         zcx_ctxfreegram_tokenizer.
 
+protected section.
   PRIVATE SECTION.
-
+*    DATA symbol_stack TYPE TABLE OF REF TO ZIF_CTXFREEGRAM_PARSED_SYMBOL.
     TYPES ty_state TYPE i.
     TYPES:
       BEGIN OF ty_ls_parse_stack,
@@ -91,7 +93,6 @@ CLASS zcl_ctxfreegram_lr_parser DEFINITION
     DATA current_token        TYPE ts_token. "REF TO zif_ctxfreegram_token.
 *    DATA current_token_number TYPE i.
     DATA auo_lexer            TYPE REF TO zif_ctxfreegram_tokenizer. "= record_trace
-    DATA symbol_stack         TYPE TABLE OF REF TO lif_parsed_symbol.
 
     METHODS arg
       IMPORTING
@@ -199,7 +200,9 @@ CLASS zcl_ctxfreegram_lr_parser DEFINITION
 ENDCLASS.
 
 
-CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
+
+CLASS ZCL_CTXFREEGRAM_LR_PARSER IMPLEMENTATION.
+
 
   METHOD append_ast.
 *    DATA(i2) = lines( ast ).
@@ -222,10 +225,12 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
 *        TO ast.
   ENDMETHOD.
 
+
   METHOD arg.
     CREATE OBJECT args.
     args->arg( arg ).
   ENDMETHOD.
+
 
   METHOD create.
     result = NEW zcl_ctxfreegram_lr_parser( ).
@@ -233,6 +238,7 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
     result->record_trace = record_trace.
     result->end_of_input = lcl_token_end_of_input=>create( text = io_context_free_grammar->symbol_end_of_input-value ).
   ENDMETHOD.
+
 
   METHOD get_action.
 
@@ -287,12 +293,13 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
     result = action.
   ENDMETHOD.
 
+
   METHOD get_ast_as_string_table.
 
     TYPES:
       BEGIN OF ts_tree_symbol,
         level  TYPE i,
-        symbol TYPE REF TO lif_parsed_symbol,
+        symbol TYPE REF TO ZIF_CTXFREEGRAM_PARSED_SYMBOL,
       END OF ts_tree_symbol.
     TYPES tt_tree_symbol TYPE STANDARD TABLE OF ts_tree_symbol WITH EMPTY KEY.
 
@@ -303,8 +310,8 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
       DATA(indent) = repeat( val = ` `
                              occ = symbol_1-level * 4 ).
       CASE TYPE OF symbol_1-symbol.
-        WHEN TYPE lcl_parsed_nonterminal.
-          DATA(nonterminal) = CAST lcl_parsed_nonterminal( symbol_1-symbol ).
+        WHEN TYPE zcl_ctxfreegram_parsed_NONterm.
+          DATA(nonterminal) = CAST zcl_ctxfreegram_parsed_NONterm( symbol_1-symbol ).
           DATA(rule) = REF #( grammar->formatted_rules[ nonterminal->rule_number ] ).
           INSERT |{ indent }{ rule->plain_text }| INTO TABLE result.
           DATA(insert_tabix) = current_symbol_tabix.
@@ -315,13 +322,14 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
                 INTO symbols
                 INDEX insert_tabix.
           ENDLOOP.
-        WHEN TYPE lcl_parsed_terminal.
-          DATA(terminal) = CAST lcl_parsed_terminal( symbol_1-symbol ).
+        WHEN TYPE zcl_ctxfreegram_parsed_term.
+          DATA(terminal) = CAST zcl_ctxfreegram_parsed_term( symbol_1-symbol ).
           INSERT |{ indent }token: '{ terminal->token->get_text( ) }'| INTO TABLE result.
       ENDCASE.
     ENDLOOP.
 
   ENDMETHOD.
+
 
   METHOD get_goto_state_for_reduce.
     READ TABLE grammar->aut_goto
@@ -339,6 +347,7 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
 
     result = goto->next_state.
   ENDMETHOD.
+
 
   METHOD get_next_token.
 
@@ -358,6 +367,7 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
 *    result-index = get_terminal_index_in_grammar( result ).
 
   ENDMETHOD.
+
 
   METHOD get_rule_number.
 
@@ -393,10 +403,12 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD get_rule_text.
     DATA(rule) = REF #( grammar->formatted_rules[ rule_index ] ).
     result = |{ rule->lhs->get_text( ) }: { COND #( WHEN rule->rhs IS BOUND THEN rule->rhs->get_text( ) ) }|.
   ENDMETHOD.
+
 
   METHOD parse.
 
@@ -454,7 +466,7 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
 *                            to_token   = current_token_number ).
 
           " Push the last token on the stack
-          APPEND lcl_parsed_terminal=>create( current_token-object ) TO symbol_stack.
+          APPEND zcl_ctxfreegram_parsed_term=>create( current_token-object ) TO symbol_stack.
 
 *          "--------------------
 *          " Shift the matched terminal t onto the parse stack and scan the next input symbol into the lookahead buffer.
@@ -560,6 +572,7 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD parse_stack_pop.
 
     DATA(from_tabix) = lines( parse_stack ) - number_of_elements + 1.
@@ -571,6 +584,7 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD parse_stack_push.
 
     APPEND VALUE ty_ls_parse_stack( state = state )
@@ -581,21 +595,23 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
     trace_if_active( |  pushParseStack( state { state } )| ).", action { is_action-index }, tokens { from_token }-{ to_token })| ).
   ENDMETHOD.
 
+
   METHOD pop_push_symbols.
 
     DATA(reduced_rule_2) = get_rule_number( i_rule_number ).
-    DATA(child_symbols) = VALUE lcl_parsed_nonterminal=>tt_parsed_symbol( ).
+    DATA(child_symbols) = VALUE zcl_ctxfreegram_parsed_NONterm=>tt_parsed_symbol( ).
     LOOP AT symbol_stack INTO DATA(symbol)
           FROM ( lines( symbol_stack ) - lines( reduced_rule_2->t_symbol ) + 1 ).
       APPEND symbol TO child_symbols.
       DELETE symbol_stack USING KEY loop_key.
     ENDLOOP.
     " PUSH 1 SYMBOL
-    APPEND lcl_parsed_nonterminal=>create( rule_number   = i_rule_number
+    APPEND zcl_ctxfreegram_parsed_NONterm=>create( rule_number   = i_rule_number
                                            child_symbols = child_symbols )
       TO symbol_stack.
 
   ENDMETHOD.
+
 
   METHOD sprintf.
     DATA arg TYPE string.
@@ -606,14 +622,15 @@ CLASS zcl_ctxfreegram_lr_parser IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
+
   METHOD trace.
     APPEND trace_text TO trace_table.
   ENDMETHOD.
+
 
   METHOD trace_if_active.
     IF record_trace = abap_true.
       trace( trace_text ).
     ENDIF.
   ENDMETHOD.
-
 ENDCLASS.

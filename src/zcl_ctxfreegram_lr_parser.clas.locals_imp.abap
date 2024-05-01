@@ -27,23 +27,3 @@ CLASS lcl_token_end_of_input IMPLEMENTATION.
   ENDMETHOD.
 
 ENDCLASS.
-
-CLASS lcl_parsed_nonterminal IMPLEMENTATION.
-
-  METHOD create.
-    result = new lcl_parsed_nonterminal( ).
-    result->rule_number = rule_number.
-    result->child_symbols = child_symbols.
-  ENDMETHOD.
-
-ENDCLASS.
-
-CLASS lcl_parsed_terminal IMPLEMENTATION.
-
-  METHOD create.
-    result = new lcl_parsed_terminal( ).
-    result->token = token.
-*    result->terminal_index = terminal_index.
-  ENDMETHOD.
-
-ENDCLASS.
