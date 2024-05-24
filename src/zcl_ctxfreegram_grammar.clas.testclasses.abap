@@ -11,20 +11,27 @@ CLASS ltc_create_from_string_table DEFINITION
     METHODS wikipedia_example FOR TESTING RAISING cx_static_check.
 ENDCLASS.
 
-CLASS ltc_main DEFINITION
+CLASS ltc_erroneous DEFINITION
       FOR TESTING
       DURATION SHORT
       RISK LEVEL HARMLESS.
   PRIVATE SECTION.
     METHODS lhs_not_bound FOR TESTING RAISING cx_static_check.
     METHODS missing_start_rule FOR TESTING RAISING cx_static_check.
+    METHODS rhs_nonterminal_wo_lhs FOR TESTING RAISING cx_static_check.
+    METHODS start_rule_twice FOR TESTING RAISING cx_static_check.
+ENDCLASS.
+
+CLASS ltc_main DEFINITION
+      FOR TESTING
+      DURATION SHORT
+      RISK LEVEL HARMLESS.
+  PRIVATE SECTION.
     METHODS optional FOR TESTING RAISING cx_static_check.
     METHODS optional_b_in_abc FOR TESTING RAISING cx_static_check.
     METHODS regex FOR TESTING RAISING cx_static_check.
     METHODS repetition_kleene_star FOR TESTING RAISING cx_static_check.
     METHODS repetition_kleene_plus FOR TESTING RAISING cx_static_check.
-    METHODS rhs_nonterminal_wo_lhs FOR TESTING RAISING cx_static_check.
-    METHODS start_rule_twice FOR TESTING RAISING cx_static_check.
     METHODS unique_rule_one_character FOR TESTING RAISING cx_static_check.
     METHODS unique_rule_two_characters FOR TESTING RAISING cx_static_check.
     METHODS wikipedia_example FOR TESTING RAISING cx_static_check.
@@ -104,7 +111,7 @@ CLASS ltc_create_from_string_table IMPLEMENTATION.
 
 ENDCLASS.
 
-CLASS ltc_main IMPLEMENTATION.
+CLASS ltc_erroneous IMPLEMENTATION.
 
   METHOD lhs_not_bound.
 
@@ -138,6 +145,44 @@ CLASS ltc_main IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD rhs_nonterminal_wo_lhs.
+
+    TRY.
+        DATA(grammar) = zcl_ctxfreegram_grammar=>create_from_string_table(
+                            start_rule   = 'start'
+                            string_table = VALUE #(
+                                ( `start: tokens` ) ) ).
+      CATCH zcx_ctxfreegram INTO DATA(lx).
+    ENDTRY.
+
+    IF lx IS NOT BOUND OR lx->error <> zcx_ctxfreegram=>c_error-rhs_nonterminal_wo_lhs.
+      cl_abap_unit_assert=>fail( msg = 'Exception "One nonterminal is in RHS but is missing in LHS" expected' ).
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD start_rule_twice.
+
+    DATA(factory) = zcl_ctxfreegram_factory=>create( ).
+    DATA(start) = factory->new_nonterminal( 'start' ).
+    TRY.
+        DATA(grammar) = zcl_ctxfreegram_grammar=>create( start_rule = start
+                                                 rules      = VALUE #(
+                                                            ( lhs = start )
+                                                            ( lhs = start ) ) ).
+      CATCH zcx_ctxfreegram INTO DATA(lx).
+    ENDTRY.
+
+    IF lx IS NOT BOUND OR lx->error <> zcx_ctxfreegram=>c_error-start_rule_must_appear_once.
+      cl_abap_unit_assert=>fail( msg = 'Exception "start rule must appear once" expected' ).
+    ENDIF.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS ltc_main IMPLEMENTATION.
+
   METHOD optional.
 
     " start: optional
@@ -148,11 +193,13 @@ CLASS ltc_main IMPLEMENTATION.
     DATA(start) = factory->new_nonterminal( 'start' ).
     DATA(optional) = factory->new_nonterminal( 'optional' ).
     DATA(letter_a) = factory->new_terminal( 'a' ).
-    DATA(grammar) = zcl_ctxfreegram_grammar=>create( start_rule = start
-                                             rules = VALUE #(
-                                                    ( lhs = start    rhs = optional )
-                                                    ( lhs = optional rhs = letter_a )
-                                                    ( lhs = optional ) ) ).
+
+    DATA(grammar) = zcl_ctxfreegram_grammar=>create(
+        start_rule = start
+        rules      = VALUE #(
+            ( lhs = start    rhs = optional )
+            ( lhs = optional rhs = letter_a )
+            ( lhs = optional ) ) ).
 
     DATA(first_sets) = grammar->render_first_sets( ).
     DATA(follow_sets) = grammar->render_follow_sets( ).
@@ -185,11 +232,11 @@ CLASS ltc_main IMPLEMENTATION.
   METHOD optional_b_in_abc.
 
     DATA(grammar) = zcl_ctxfreegram_grammar=>create_from_string_table(
-                start_rule   = 'start'
-                string_table = VALUE #(
-                    ( `start: 'a' optional 'c'` )
-                    ( `optional: 'b'  ` )
-                    ( `optional:      ` ) ) ).
+        start_rule   = 'start'
+        string_table = VALUE #(
+            ( `start: 'a' optional 'c'` )
+            ( `optional: 'b'  ` )
+            ( `optional:      ` ) ) ).
 
     DATA(action_goto_table) = grammar->render_action_goto_table( ).
 
@@ -205,11 +252,12 @@ CLASS ltc_main IMPLEMENTATION.
 
   METHOD regex.
 
-    " start: 'regex:[a-zA-Z_][a-zA-Z_0-9]*'
+    " start: '[A-Z]'
+*    " start: 'regex:[a-zA-Z_][a-zA-Z_0-9]*'
 
     DATA(factory) = zcl_ctxfreegram_factory=>create( ).
     DATA(start) = factory->new_nonterminal( 'start' ).
-    DATA(regex) = factory->new_terminal_regex( '[a-zA-Z_][a-zA-Z_0-9]*' ).
+    DATA(regex) = factory->new_terminal_regex( '[A-Z]' ).
 
     DATA(grammar) = zcl_ctxfreegram_grammar=>create(
         start_rule = start
@@ -223,10 +271,14 @@ CLASS ltc_main IMPLEMENTATION.
     cl_abap_unit_assert=>assert_equals(
         act = item_sets
         exp = |* Item set 1:\n|
-           && |** Item kernel: start = ◆ '[a-zA-Z_][a-zA-Z_0-9]*'\n| ).
+           && |** Item kernel: start = ◆ [A-Z]\n|
+           && |* Item set 2:\n|
+           && |** Item kernel: start = [A-Z] ◆\n| ).
+
     cl_abap_unit_assert=>assert_equals( act = action_goto_table exp =
-        |   '$'  start  \n| &&
-        |1  acc         \n| ).
+        |   '$'  [A-Z]  start  \n| &
+        |1       s2            \n| &
+        |2  acc                \n| ).
 
   ENDMETHOD.
 
@@ -247,7 +299,7 @@ CLASS ltc_main IMPLEMENTATION.
 
     DATA(grammar) = zcl_ctxfreegram_grammar=>create(
         start_rule = start
-        rules = VALUE #(
+        rules      = VALUE #(
             ( lhs = start                   rhs = repetition_kleene_plus )
             ( lhs = repetition_kleene_plus  rhs = factory->new_sequence( VALUE #( ( repeated_group ) ( repetition_kleene_plus ) ) ) )
             ( lhs = repetition_kleene_plus  rhs = repeated_group )
@@ -341,48 +393,16 @@ CLASS ltc_main IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD rhs_nonterminal_wo_lhs.
-
-    TRY.
-        DATA(grammar) = zcl_ctxfreegram_grammar=>create_from_string_table(
-                            start_rule   = 'start'
-                            string_table = VALUE #(
-                                ( `start: tokens` ) ) ).
-      CATCH zcx_ctxfreegram INTO DATA(lx).
-    ENDTRY.
-
-    IF lx IS NOT BOUND OR lx->error <> zcx_ctxfreegram=>c_error-rhs_nonterminal_wo_lhs.
-      cl_abap_unit_assert=>fail( msg = 'Exception "One nonterminal is in RHS but is missing in LHS" expected' ).
-    ENDIF.
-
-  ENDMETHOD.
-
-  METHOD start_rule_twice.
-
-    DATA(factory) = zcl_ctxfreegram_factory=>create( ).
-    DATA(start) = factory->new_nonterminal( 'start' ).
-    TRY.
-        DATA(grammar) = zcl_ctxfreegram_grammar=>create( start_rule = start
-                                                 rules      = VALUE #(
-                                                            ( lhs = start )
-                                                            ( lhs = start ) ) ).
-      CATCH zcx_ctxfreegram INTO DATA(lx).
-    ENDTRY.
-
-    IF lx IS NOT BOUND OR lx->error <> zcx_ctxfreegram=>c_error-start_rule_must_appear_once.
-      cl_abap_unit_assert=>fail( msg = 'Exception "start rule must appear once" expected' ).
-    ENDIF.
-
-  ENDMETHOD.
-
   METHOD unique_rule_one_character.
 
     DATA(factory) = zcl_ctxfreegram_factory=>create( ).
     DATA(start) = factory->new_nonterminal( 'start' ).
     DATA(letter_a) = factory->new_terminal( 'a' ).
-    DATA(grammar) = zcl_ctxfreegram_grammar=>create( start_rule = start
-                                             rules      = VALUE #(
-                                                        ( lhs = start rhs = letter_a ) ) ).
+
+    DATA(grammar) = zcl_ctxfreegram_grammar=>create(
+        start_rule = start
+        rules      = VALUE #(
+            ( lhs = start rhs = letter_a ) ) ).
 
     DATA(item_sets) = grammar->render_item_sets( ).
     DATA(transitions) = grammar->render_transitions( ).
@@ -411,9 +431,10 @@ CLASS ltc_main IMPLEMENTATION.
     DATA(factory) = zcl_ctxfreegram_factory=>create( ).
     DATA(start) = factory->new_nonterminal( 'start' ).
     DATA(a) = factory->new_terminal( 'a' ).
-    DATA(grammar) = zcl_ctxfreegram_grammar=>create( start_rule = start
-                                             rules      = VALUE #(
-                                                        ( lhs = start rhs = factory->new_sequence( VALUE #( ( a ) ( a ) ) ) ) ) ).
+    DATA(grammar) = zcl_ctxfreegram_grammar=>create(
+        start_rule = start
+        rules      = VALUE #(
+            ( lhs = start rhs = factory->new_sequence( VALUE #( ( a ) ( a ) ) ) ) ) ).
 
     DATA(item_sets) = grammar->render_item_sets( ).
     DATA(transitions) = grammar->render_transitions( ).

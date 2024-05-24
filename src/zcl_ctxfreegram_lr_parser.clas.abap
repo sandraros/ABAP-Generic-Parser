@@ -297,36 +297,74 @@ CLASS ZCL_CTXFREEGRAM_LR_PARSER IMPLEMENTATION.
   METHOD get_ast_as_string_table.
 
     TYPES:
-      BEGIN OF ts_tree_symbol,
-        level  TYPE i,
-        symbol TYPE REF TO ZIF_CTXFREEGRAM_PARSED_SYMBOL,
-      END OF ts_tree_symbol.
-    TYPES tt_tree_symbol TYPE STANDARD TABLE OF ts_tree_symbol WITH EMPTY KEY.
+        BEGIN OF ts_symbol_tree,
+          level TYPE i,
+          symbol type ref to zif_ctxfreegram_parsed_symbol,
+        END OF ts_symbol_tree.
+        TYPES tt_symbol_tree TYPE STANDARD TABLE OF ts_symbol_tree WITH EMPTY KEY.
 
-    DATA(symbols) = VALUE tt_tree_symbol( ( level  = 0
-                                            symbol = symbol_stack[ 1 ] ) ).
-    LOOP AT symbols INTO DATA(symbol_1).
-      DATA(current_symbol_tabix) = sy-tabix.
+    DATA(symbol_tree) = VALUE tt_symbol_tree( ( level  = 0
+                                                symbol = symbol_stack[ 1 ] ) ).
+    LOOP AT symbol_tree REFERENCE INTO DATA(node_of_symbol_tree).
+      DATA(tabix) = sy-tabix.
       DATA(indent) = repeat( val = ` `
-                             occ = symbol_1-level * 4 ).
-      CASE TYPE OF symbol_1-symbol.
-        WHEN TYPE zcl_ctxfreegram_parsed_NONterm.
-          DATA(nonterminal) = CAST zcl_ctxfreegram_parsed_NONterm( symbol_1-symbol ).
-          DATA(rule) = REF #( grammar->formatted_rules[ nonterminal->rule_number ] ).
-          INSERT |{ indent }{ rule->plain_text }| INTO TABLE result.
-          DATA(insert_tabix) = current_symbol_tabix.
-          LOOP AT nonterminal->child_symbols INTO DATA(child_symbol).
-            insert_tabix = insert_tabix + 1.
-            INSERT VALUE #( level  = symbol_1-level + 1
-                            symbol = child_symbol )
-                INTO symbols
-                INDEX insert_tabix.
-          ENDLOOP.
+                             occ = 4 * node_of_symbol_tree->level ).
+      CASE TYPE OF node_of_symbol_tree->symbol.
         WHEN TYPE zcl_ctxfreegram_parsed_term.
-          DATA(terminal) = CAST zcl_ctxfreegram_parsed_term( symbol_1-symbol ).
-          INSERT |{ indent }token: '{ terminal->token->get_text( ) }'| INTO TABLE result.
+          DATA(parsed_term) = CAST zcl_ctxfreegram_parsed_term( node_of_symbol_tree->symbol ).
+*          DATA(indent) = 1 + ( 4 * node_of_symbol_tree->level ).
+          INSERT |{ indent }Offset { parsed_term->token->offset }, length { parsed_term->token->length }: "{ parsed_term->token->get_text( ) }"|
+                INTO TABLE result.
+*          WRITE : AT /indent |Offset { parsed_term->token->offset }, length { parsed_term->token->length }: "{ parsed_term->token->get_text( ) }"|.
+        WHEN TYPE zcl_ctxfreegram_parsed_nonterm.
+          DATA(parsed_nonterm) = CAST zcl_ctxfreegram_parsed_nonterm( node_of_symbol_tree->symbol ).
+          DATA(rule) = grammar->formatted_rules[ index = parsed_NONterm->rule_number ].
+*          indent = 1 + ( 4 * node_of_symbol_tree->level ).
+          INSERT |{ indent }{ rule-plain_text } (#{ parsed_NONterm->rule_number }) :|
+                INTO TABLE result.
+*          WRITE : AT /indent |{ rule-plain_text } (#{ parsed_NONterm->rule_number }) :|.
+          DATA(tabix_2) = tabix.
+          LOOP AT parsed_nonterm->child_symbols INTO DATA(parsed_symbol_2).
+            tabix_2 = tabix_2 + 1.
+            INSERT VALUE #( level  = node_of_symbol_tree->level + 1
+                            symbol = parsed_symbol_2 )
+                INTO symbol_tree
+                INDEX tabix_2.
+          ENDLOOP.
       ENDCASE.
     ENDLOOP.
+
+*    TYPES:
+*      BEGIN OF ts_tree_symbol,
+*        level  TYPE i,
+*        symbol TYPE REF TO ZIF_CTXFREEGRAM_PARSED_SYMBOL,
+*      END OF ts_tree_symbol.
+*    TYPES tt_tree_symbol TYPE STANDARD TABLE OF ts_tree_symbol WITH EMPTY KEY.
+*
+*    DATA(symbols) = VALUE tt_tree_symbol( ( level  = 0
+*                                            symbol = symbol_stack[ 1 ] ) ).
+*    LOOP AT symbols INTO DATA(symbol_1).
+*      DATA(current_symbol_tabix) = sy-tabix.
+*      DATA(indent) = repeat( val = ` `
+*                             occ = symbol_1-level * 4 ).
+*      CASE TYPE OF symbol_1-symbol.
+*        WHEN TYPE zcl_ctxfreegram_parsed_NONterm.
+*          DATA(nonterminal) = CAST zcl_ctxfreegram_parsed_NONterm( symbol_1-symbol ).
+*          DATA(rule) = REF #( grammar->formatted_rules[ nonterminal->rule_number ] ).
+*          INSERT |{ indent }{ rule->plain_text }| INTO TABLE result.
+*          DATA(insert_tabix) = current_symbol_tabix.
+*          LOOP AT nonterminal->child_symbols INTO DATA(child_symbol).
+*            insert_tabix = insert_tabix + 1.
+*            INSERT VALUE #( level  = symbol_1-level + 1
+*                            symbol = child_symbol )
+*                INTO symbols
+*                INDEX insert_tabix.
+*          ENDLOOP.
+*        WHEN TYPE zcl_ctxfreegram_parsed_term.
+*          DATA(terminal) = CAST zcl_ctxfreegram_parsed_term( symbol_1-symbol ).
+*          INSERT |{ indent }token: '{ terminal->token->get_text( ) }'| INTO TABLE result.
+*      ENDCASE.
+*    ENDLOOP.
 
   ENDMETHOD.
 
@@ -567,8 +605,6 @@ CLASS ZCL_CTXFREEGRAM_LR_PARSER IMPLEMENTATION.
 *      ENDIF.
 
     ENDDO.
-
-    get_ast_as_string_table( ).
 
   ENDMETHOD.
 

@@ -24,6 +24,10 @@ CLASS lcl_terminal_regex DEFINITION.
     METHODS constructor
       IMPORTING
         terminal_regex TYPE string.
+  PRIVATE SECTION.
+    DATA terminal_regex TYPE string.
+    DATA low            TYPE string.
+    DATA high           TYPE string.
 ENDCLASS.
 
 CLASS lcl_sequence DEFINITION.
@@ -71,16 +75,23 @@ ENDCLASS.
 CLASS lcl_terminal_regex IMPLEMENTATION.
 
   METHOD constructor.
-    zif_ctxfreegram_rule_termregex~regex = terminal_regex.
+*    zif_ctxfreegram_rule_termregex~regex = terminal_regex.
+    me->terminal_regex = terminal_regex.
+    SPLIT terminal_regex AT '-' INTO low high.
     zif_ctxfreegram_rule_elem~type = zif_ctxfreegram_rule_elem=>c_type-terminal_regex.
   ENDMETHOD.
 
   METHOD zif_ctxfreegram_rule_elem~get_text.
-    result = |'{ replace( val = zif_ctxfreegram_rule_termregex~regex sub = `'` with = `''` ) }'|.
+    result = terminal_regex.
+*    result = |'{ replace( val = terminal_regex sub = `'` with = `''` ) }'|.
   ENDMETHOD.
 
   METHOD zif_ctxfreegram_rule_elem~get_elements.
     elements = VALUE #( ( me ) ).
+  ENDMETHOD.
+
+  METHOD zif_ctxfreegram_rule_termregex~applies.
+    result = xsdbool( token BETWEEN low AND high ).
   ENDMETHOD.
 
 ENDCLASS.
