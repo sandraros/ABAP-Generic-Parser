@@ -253,7 +253,6 @@ CLASS ltc_main IMPLEMENTATION.
   METHOD regex.
 
     " start: '[A-Z]'
-*    " start: 'regex:[a-zA-Z_][a-zA-Z_0-9]*'
 
     DATA(factory) = zcl_ctxfreegram_factory=>create( ).
     DATA(start) = factory->new_nonterminal( 'start' ).

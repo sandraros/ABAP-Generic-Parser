@@ -184,32 +184,33 @@ CLASS zcl_ctxfreegram_grammar DEFINITION
       RETURNING
         VALUE(result) TYPE string.
 
-private section.
+  PRIVATE SECTION.
 
-  types:
-    BEGIN OF ty_us_freetext,
+    TYPES:
+      BEGIN OF ty_us_freetext,
         index TYPE sytabix,
         value TYPE string,
       END OF ty_us_freetext .
-  types:
-    BEGIN OF ty_ls_lhs,
+    TYPES:
+      BEGIN OF ty_ls_lhs,
         nonterminal_index TYPE i,
         count             TYPE i,
       END OF ty_ls_lhs .
-  types TY_I_SET_TYPE type I .
-  types:
-    BEGIN OF ty_is_request,
+    TYPES ty_i_set_type TYPE i .
+    TYPES:
+      BEGIN OF ty_is_request,
         type   TYPE ty_i_set_type,
         symbol TYPE zcl_ctxfreegram_grammar=>ty_us_symbol,
       END OF ty_is_request .
-  types:
-    ty_it_request     TYPE TABLE OF ty_is_request .
-  types TY_I_NONTERMINAL type SYTABIX .
-  types:
-    ty_it_nonterminal TYPE TABLE OF sytabix .
+    TYPES:
+      ty_it_request     TYPE TABLE OF ty_is_request .
+    TYPES ty_i_nonterminal TYPE sytabix .
+    TYPES:
+      ty_it_nonterminal TYPE TABLE OF sytabix,
+      ty_column_widths  TYPE STANDARD TABLE OF i WITH EMPTY KEY.
 
-  constants:
-    BEGIN OF lcs_symbol_type,
+    CONSTANTS:
+      BEGIN OF lcs_symbol_type,
         nonterminal      TYPE ty_u_symbol_type VALUE 'N',
         terminal         TYPE ty_u_symbol_type VALUE 'T',
         terminal_regex   TYPE ty_u_symbol_type VALUE 'R',
@@ -217,122 +218,117 @@ private section.
         special_sequence TYPE ty_u_symbol_type VALUE '?',
         empty            TYPE ty_u_symbol_type VALUE 'E',
       END OF lcs_symbol_type .
-  constants:
-    BEGIN OF c_is_set_type,
+    CONSTANTS:
+      BEGIN OF c_is_set_type,
         first_set  TYPE ty_i_set_type VALUE 1,
         follow_set TYPE ty_i_set_type VALUE 2,
       END OF c_is_set_type .
-  data TRANSMITTED_RULES type TY_RULES .
-  data:
-    aut_symbol                TYPE TABLE OF ty_us_symbol .
-  data:
-    aut_freetext              TYPE TABLE OF ty_us_freetext .
-  data AUO_TERMINAL_END_OF_INPUT type ref to ZIF_CTXFREEGRAM_RULE_TERM .
+    DATA transmitted_rules TYPE ty_rules .
+    DATA:
+      aut_symbol                TYPE TABLE OF ty_us_symbol .
+    DATA:
+      aut_freetext              TYPE TABLE OF ty_us_freetext .
+    DATA auo_terminal_end_of_input TYPE REF TO zif_ctxfreegram_rule_term .
 
-  methods ADD_NONTERMINAL
-    importing
-      !NONTERMINAL type ref to ZIF_CTXFREEGRAM_RULE_NONTERM
-    returning
-      value(INDEX) type TY_US_SYMBOL .
-  methods ADD_TERMINAL
-    importing
-      !TERMINAL type ref to ZIF_CTXFREEGRAM_RULE_TERM
-    returning
-      value(INDEX) type TY_US_SYMBOL .
-  methods ADD_TERMINAL_REGEX
-    importing
-      !TERMINAL_REGEX type ref to ZIF_CTXFREEGRAM_RULE_TERMREGEX
-    returning
-      value(INDEX) type TY_US_SYMBOL .
-  methods CHECK_LHS_RHS_IS_BOUND
-    raising
-      ZCX_CTXFREEGRAM .
-  methods CHECK_START_RULE_APPEARS_ONCE
-    raising
-      ZCX_CTXFREEGRAM .
-  methods CHECK_VALIDITY
-    raising
-      ZCX_CTXFREEGRAM .
-  methods CREATE_2
-    raising
-      ZCX_CTXFREEGRAM .
-  methods CREATE_ACTION_TABLE .
-  methods CREATE_FIRST_AND_FOLLOW_SETS .
-  methods CREATE_FIRST_OR_FOLLOW_SET
-    importing
-      !IS_REQUEST type TY_IS_REQUEST
-      !IT_PROCESSED_REQUEST type TY_IT_REQUEST optional
-    returning
-      value(RT_SYMBOL) type ZCL_CTXFREEGRAM_GRAMMAR=>TY_UT_SYMBOL .
-  methods CREATE_FIRST_SET .
-  methods CREATE_FIRST_SET2
-    importing
-      !I_NONTERMINAL type TY_I_NONTERMINAL
-      !IT_PRECEDING_NONTERMINALS type TY_IT_NONTERMINAL optional
-    returning
-      value(RT_FIRST_SET) type TY_UT_FIRST_SET .
-  methods CREATE_FOLLOW_SET .
-  methods CREATE_FOLLOW_SET2
-    importing
-      !IS_SYMBOL type ZCL_CTXFREEGRAM_GRAMMAR=>TY_US_SYMBOL
-      !IT_PRECEDING_SYMBOL type ZCL_CTXFREEGRAM_GRAMMAR=>TY_UT_SYMBOL optional
-    returning
-      value(RS_FOLLOW_SET) type TY_US_FOLLOW_SET .
-  methods CREATE_GOTO_TABLE .
-  methods CREATE_ITEM_SET_TRANSIT_TABLES .
-  methods CREATE_RENDER_TABLE
-    importing
-      !TERMINALS type ABAP_BOOL default ABAP_TRUE
-      !NONTERMINALS type ABAP_BOOL default ABAP_TRUE
-    returning
-      value(RESULT) type ref to DATA .
-  methods DO_THE_CLOSURE
-    changing
-      !CS_ITEM_SET type ZCL_CTXFREEGRAM_GRAMMAR=>TY_US_ITEM_SET .
-  methods ERROR .
-  methods FORMAT_RULES
-    returning
-      value(RT_RESULT) type TT_RULE .
-  methods GET_FREETEXT
-    importing
-      !I_INDEX type SYTABIX
-    returning
-      value(R_RESULT) type STRING .
-  methods GET_NONTERMINAL
-    importing
-      !I_INDEX type SYTABIX
-    returning
-      value(R_RESULT) type STRING .
-*    METHODS render
-*      EXPORTING
-*        et_text   TYPE STANDARD TABLE
-*        e_text    TYPE string
-*        et_stream TYPE STANDARD TABLE.
-  methods GET_SYMBOL
-    importing
-      !IS_SYMBOL type TY_US_SYMBOL
-    returning
-      value(R_RESULT) type STRING .
-  methods GET_TERMINAL
-    importing
-      !I_INDEX type SYTABIX
-      !I_ABAP type CSEQUENCE default ABAP_FALSE
-    returning
-      value(R_RESULT) type STRING .
-  methods REMOVE_USELESS_REDUCE_ACTIONS .
-  methods RENDER_TABLE
-    importing
-      !TABLE type ANY TABLE
-    returning
-      value(RESULT) type STRING .
-  methods CHECK_RHS_NONTERMINALS_IN_LHS
-    raising
-      ZCX_CTXFREEGRAM .
+    METHODS add_nonterminal
+      IMPORTING
+        !nonterminal TYPE REF TO zif_ctxfreegram_rule_nonterm
+      RETURNING
+        VALUE(index) TYPE ty_us_symbol .
+    METHODS add_terminal
+      IMPORTING
+        !terminal    TYPE REF TO zif_ctxfreegram_rule_term
+      RETURNING
+        VALUE(index) TYPE ty_us_symbol .
+    METHODS add_terminal_regex
+      IMPORTING
+        !terminal_regex TYPE REF TO zif_ctxfreegram_rule_termregex
+      RETURNING
+        VALUE(index)    TYPE ty_us_symbol .
+    METHODS check_lhs_rhs_is_bound
+      RAISING
+        zcx_ctxfreegram .
+    METHODS check_rhs_nonterminals_in_lhs
+      RAISING
+        zcx_ctxfreegram .
+    METHODS check_start_rule_appears_once
+      RAISING
+        zcx_ctxfreegram .
+    METHODS check_validity
+      RAISING
+        zcx_ctxfreegram .
+    METHODS create_2
+      RAISING
+        zcx_ctxfreegram .
+    METHODS create_action_table .
+    METHODS create_first_and_follow_sets .
+    METHODS create_first_or_follow_set
+      IMPORTING
+        !is_request           TYPE ty_is_request
+        !it_processed_request TYPE ty_it_request OPTIONAL
+      RETURNING
+        VALUE(rt_symbol)      TYPE zcl_ctxfreegram_grammar=>ty_ut_symbol .
+    METHODS create_first_set .
+    METHODS create_first_set2
+      IMPORTING
+        !i_nonterminal             TYPE ty_i_nonterminal
+        !it_preceding_nonterminals TYPE ty_it_nonterminal OPTIONAL
+      RETURNING
+        VALUE(rt_first_set)        TYPE ty_ut_first_set .
+    METHODS create_follow_set .
+    METHODS create_follow_set2
+      IMPORTING
+        !is_symbol           TYPE zcl_ctxfreegram_grammar=>ty_us_symbol
+        !it_preceding_symbol TYPE zcl_ctxfreegram_grammar=>ty_ut_symbol OPTIONAL
+      RETURNING
+        VALUE(rs_follow_set) TYPE ty_us_follow_set .
+    METHODS create_goto_table .
+    METHODS create_item_set_transit_tables .
+    METHODS create_render_table
+      IMPORTING
+        !terminals    TYPE abap_bool DEFAULT abap_true
+        !nonterminals TYPE abap_bool DEFAULT abap_true
+      RETURNING
+        VALUE(result) TYPE REF TO data .
+    METHODS do_the_closure
+      CHANGING
+        !cs_item_set TYPE zcl_ctxfreegram_grammar=>ty_us_item_set .
+    METHODS error .
+    METHODS format_rules
+      RETURNING
+        VALUE(rt_result) TYPE tt_rule .
+    METHODS get_column_widths
+      IMPORTING
+        table         TYPE ANY TABLE
+      RETURNING
+        VALUE(result) TYPE zcl_ctxfreegram_grammar=>ty_column_widths.
+    METHODS get_freetext
+      IMPORTING
+        !i_index        TYPE sytabix
+      RETURNING
+        VALUE(r_result) TYPE string .
+    METHODS get_nonterminal
+      IMPORTING
+        !i_index        TYPE sytabix
+      RETURNING
+        VALUE(r_result) TYPE string .
+    METHODS get_symbol
+      IMPORTING
+        !is_symbol      TYPE ty_us_symbol
+      RETURNING
+        VALUE(r_result) TYPE string .
+    METHODS get_terminal
+      IMPORTING
+        !i_index        TYPE sytabix
+        !i_abap         TYPE csequence DEFAULT abap_false
+      RETURNING
+        VALUE(r_result) TYPE string .
+    METHODS remove_useless_reduce_actions .
 ENDCLASS.
 
 
 
-CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
+CLASS zcl_ctxfreegram_grammar IMPLEMENTATION.
 
 
   METHOD add_nonterminal.
@@ -385,7 +381,7 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD ADD_TERMINAL_REGEX.
+  METHOD add_terminal_regex.
     DATA(regex) = terminal_regex->zif_ctxfreegram_rule_elem~get_text( ).
     READ TABLE aut_symbol WITH KEY type  = lcs_symbol_type-terminal_regex
                                    value = regex
@@ -441,7 +437,7 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
       DATA(rhs_elements) = rule->rhs->get_elements( ).
       LOOP AT rhs_elements INTO DATA(rhs_element).
         IF rhs_element IS INSTANCE OF zif_ctxfreegram_rule_nonterm.
-          data(rhs_nonterminal) = cast zif_ctxfreegram_rule_nonterm( rhs_element ).
+          DATA(rhs_nonterminal) = CAST zif_ctxfreegram_rule_nonterm( rhs_element ).
           IF NOT line_exists( transmitted_rules[ lhs = rhs_nonterminal ] ).
             RAISE EXCEPTION TYPE zcx_ctxfreegram
               EXPORTING
@@ -537,7 +533,8 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
     "        - if it's a nonterminal, there's a shift for all symbols of the First Set of this nonterminal except "$"
     "  )
     LOOP AT aut_transition ASSIGNING <ls_transition>
-         WHERE s_symbol-type = zcl_ctxfreegram_grammar=>lcs_symbol_type-terminal.
+         WHERE s_symbol-type = zcl_ctxfreegram_grammar=>lcs_symbol_type-terminal
+            OR s_symbol-type = zcl_ctxfreegram_grammar=>lcs_symbol_type-terminal_regex.
       INSERT VALUE #( state          = <ls_transition>-item_set_index
                       terminal_index = <ls_transition>-s_symbol-index
                       action         = lcs_action-shift
@@ -583,11 +580,11 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
           INSERT VALUE #( state          = <ls_item_set>-index
                           terminal_index = <ls_symbol>-index
                           action         = COND #( WHEN <ls_item>-rule_index = 1
-                                                   then lcs_action-accept
-                                                   else lcs_action-reduce )
+                                                   THEN lcs_action-accept
+                                                   ELSE lcs_action-reduce )
                           index          = COND #( WHEN <ls_item>-rule_index = 1
-                                                   then 0
-                                                   else <ls_item>-rule_index ) )
+                                                   THEN 0
+                                                   ELSE <ls_item>-rule_index ) )
               INTO TABLE aut_action.
         ENDLOOP.
       ENDLOOP.
@@ -1338,9 +1335,10 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
                                       ( aux_element ) ).
             WHEN OTHERS.
               RAISE EXCEPTION TYPE zcx_ctxfreegram_unexpected
-                  EXPORTING text  = 'Rule "&1" contains an element of invalid type "&2"'
-                            msgv1 = EXACT #( rule-lhs->get_text( ) )
-                            msgv2 = EXACT #( element->type ).
+                EXPORTING
+                  text  = 'Rule "&1" contains an element of invalid type "&2"'
+                  msgv1 = EXACT #( rule-lhs->get_text( ) )
+                  msgv2 = EXACT #( element->type ).
           ENDCASE.
 
           LOOP AT new_elements INTO element.
@@ -1352,6 +1350,24 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
         ENDLOOP.
       ENDIF.
     ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD get_column_widths.
+    CONSTANTS no_of_blanks_between_columns TYPE i VALUE 2.
+
+    DATA(components) = CAST cl_abap_structdescr( CAST cl_abap_tabledescr( cl_abap_typedescr=>describe_by_data( table ) )->get_table_line_type( ) )->get_components( ).
+    DO lines( components ) TIMES.
+      DATA(max_width) = 0.
+      LOOP AT table ASSIGNING FIELD-SYMBOL(<line>).
+        ASSIGN COMPONENT sy-index OF STRUCTURE <line> TO FIELD-SYMBOL(<comp>).
+        max_width = nmax( val1 = max_width
+                          val2 = strlen( |{ <comp> }| ) ).
+      ENDLOOP.
+      max_width = max_width + no_of_blanks_between_columns.
+      APPEND max_width TO result.
+    ENDDO.
+
   ENDMETHOD.
 
 
@@ -1506,12 +1522,15 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
     " HEADING
     APPEND INITIAL LINE TO <actions> ASSIGNING FIELD-SYMBOL(<action>).
     LOOP AT aut_symbol ASSIGNING FIELD-SYMBOL(<symbol>).
-      DATA(compname) = |{ COND #( WHEN <symbol>-type = lcs_symbol_type-terminal THEN 'T' ELSE 'N' ) }{ <symbol>-index }|.
+      DATA(compname) = |{ COND #( WHEN <symbol>-type = lcs_symbol_type-terminal
+                                    OR <symbol>-type = lcs_symbol_type-terminal_regex
+                                  THEN 'T'
+                                  ELSE 'N' )
+                        }{ <symbol>-index }|.
       ASSIGN COMPONENT compname OF STRUCTURE <action> TO FIELD-SYMBOL(<comp>).
       <comp> = <symbol>-object->get_text( ).
     ENDLOOP.
 
-    " ACTIONS
     LOOP AT aut_item_set REFERENCE INTO DATA(item_set).
 
       APPEND INITIAL LINE TO <actions> ASSIGNING <action>.
@@ -1519,6 +1538,7 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
       ASSIGN COMPONENT 'ITEM_SET' OF STRUCTURE <action> TO <comp>.
       <comp> = |{ item_set->index }|.
 
+      " ACTIONS
       LOOP AT aut_action REFERENCE INTO DATA(action)
            WHERE state = item_set->index.
         compname = |T{ action->terminal_index }|.
@@ -1529,6 +1549,7 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
         <comp> = COND string( WHEN action->action = 'a' THEN |acc| ELSE |{ action->action }{ action->index }| ).
       ENDLOOP.
 
+      " GOTO table
       LOOP AT aut_transition REFERENCE INTO DATA(transition)
            WHERE     s_symbol-type  = lcs_symbol_type-nonterminal
                  AND item_set_index = item_set->index.
@@ -1542,7 +1563,7 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
 
     ENDLOOP.
 
-    result = render_table( <actions> ).
+    result = zcl_ctxfreegram_utilities=>render_table( <actions> ).
   ENDMETHOD.
 
 
@@ -1605,31 +1626,7 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD render_table.
-    TYPES ty_column_widths TYPE STANDARD TABLE OF i WITH EMPTY KEY.
 
-    DATA(components) = CAST cl_abap_structdescr( CAST cl_abap_tabledescr( cl_abap_typedescr=>describe_by_data( table ) )->get_table_line_type( ) )->get_components( ).
-    DATA(column_widths) = VALUE ty_column_widths( ).
-    DO lines( components ) TIMES.
-      DATA(max_width) = 0.
-      LOOP AT table ASSIGNING FIELD-SYMBOL(<line>).
-        ASSIGN COMPONENT sy-index OF STRUCTURE <line> TO FIELD-SYMBOL(<comp>).
-        max_width = nmax( val1 = max_width
-                          val2 = strlen( |{ <comp> }| ) ).
-      ENDLOOP.
-      max_width = max_width + 2. " number of blanks between columns
-      APPEND max_width TO column_widths.
-    ENDDO.
-
-    LOOP AT table ASSIGNING <line>.
-      DATA(line) = ``.
-      DO lines( column_widths ) TIMES.
-        ASSIGN COMPONENT sy-index OF STRUCTURE <line> TO <comp>.
-        line = line && |{ <comp> WIDTH = column_widths[ sy-index ] }|.
-      ENDDO.
-      result = result && line && |\n|.
-    ENDLOOP.
-  ENDMETHOD.
 
 
   METHOD render_transitions.
@@ -1668,6 +1665,7 @@ CLASS ZCL_CTXFREEGRAM_GRAMMAR IMPLEMENTATION.
 
     ENDLOOP.
 
-    result = render_table( <transitions> ).
+    result = zcl_ctxfreegram_utilities=>render_table( <transitions> ).
   ENDMETHOD.
+
 ENDCLASS.

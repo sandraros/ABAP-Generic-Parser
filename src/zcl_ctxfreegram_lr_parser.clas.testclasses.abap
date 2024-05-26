@@ -117,30 +117,31 @@ CLASS ltc_parse_optional_complex IMPLEMENTATION.
 
     parser->parse( zcl_ctxfreegram_tokenizer_1c=>create_from_string( string = 'abc' ) ).
 
-    DATA(act) = parser->get_ast_as_string_table( ).
+    DATA(act) = zcl_ctxfreegram_utilities=>render_table( parser->get_ast_as_string_table( with_rule_number = abap_true ) ).
+
+    DATA(exp) = `start: 'a' optional 'c' (#1) :   ` && |\n|
+             && `    Offset 0, length 1: "a"      ` && |\n|
+             && `    optional: 'b' (#2) :         ` && |\n|
+             && `        Offset 1, length 1: "b"  ` && |\n|
+             && `    Offset 2, length 1: "c"      ` && |\n|.
 
     cl_abap_unit_assert=>assert_equals( act = act
-                                        exp = VALUE string_table(
-                                            ( `start: 'a' optional 'c'` )
-                                            ( `    token: 'a'` )
-                                            ( `    optional: 'b'` )
-                                            ( `        token: 'b'` )
-                                            ( `    token: 'c'` ) ) ).
-
+                                        exp = exp ).
   ENDMETHOD.
 
   METHOD parse_without_option.
 
     parser->parse( zcl_ctxfreegram_tokenizer_1c=>create_from_string( string = 'ac' ) ).
 
-    DATA(act) = parser->get_ast_as_string_table( ).
+    DATA(act) = zcl_ctxfreegram_utilities=>render_table( parser->get_ast_as_string_table( with_rule_number = abap_true ) ).
+
+    DATA(exp) = `start: 'a' optional 'c' (#1) :  ` && |\n|
+             && `    Offset 0, length 1: "a"     ` && |\n|
+             && `    optional:  (#3) :           ` && |\n|
+             && `    Offset 1, length 1: "c"     ` && |\n|.
 
     cl_abap_unit_assert=>assert_equals( act = act
-                                        exp = VALUE string_table(
-                                            ( `start: 'a' optional 'c'` )
-                                            ( `    token: 'a'` )
-                                            ( `    optional: ` )
-                                            ( `    token: 'c'` ) ) ).
+                                        exp = exp ).
   ENDMETHOD.
 
   METHOD setup.
@@ -166,27 +167,27 @@ CLASS ltc_parse_optional_simple IMPLEMENTATION.
 
     parser->parse( zcl_ctxfreegram_tokenizer_1c=>create_from_string( string = '' ) ).
 
-    DATA(act) = parser->get_ast_as_string_table( ).
+    DATA(act) = zcl_ctxfreegram_utilities=>render_table( parser->get_ast_as_string_table( with_rule_number = abap_true ) ).
+
+    DATA(exp) = `start: optional (#1) :  ` && |\n|
+             && `    optional:  (#3) :   ` && |\n|.
 
     cl_abap_unit_assert=>assert_equals( act = act
-                                        exp = VALUE string_table(
-                                            ( `start: optional` )
-                                            ( `    optional: ` ) ) ).
-
+                                        exp = exp ).
   ENDMETHOD.
 
   METHOD parse_not_empty.
 
     parser->parse( zcl_ctxfreegram_tokenizer_1c=>create_from_string( string = 'a' ) ).
 
-    DATA(act) = parser->get_ast_as_string_table( ).
+    DATA(act) = zcl_ctxfreegram_utilities=>render_table( parser->get_ast_as_string_table( with_rule_number = abap_true ) ).
+
+    DATA(exp) = `start: optional (#1) :           ` && |\n|
+             && `    optional: 'a' (#2) :         ` && |\n|
+             && `        Offset 0, length 1: "a"  ` && |\n|.
 
     cl_abap_unit_assert=>assert_equals( act = act
-                                        exp = VALUE string_table(
-                                            ( `start: optional` )
-                                            ( `    optional: 'a'` )
-                                            ( `        token: 'a'` ) ) ).
-
+                                        exp = exp ).
   ENDMETHOD.
 
   METHOD setup.
@@ -235,44 +236,11 @@ CLASS ltc_tokenizer IMPLEMENTATION.
 
     ENDTRY.
 
-    DATA(act) = parser->get_ast_as_string_table( ).
+    DATA(act) = zcl_ctxfreegram_utilities=>render_table( parser->get_ast_as_string_table( ) ).
 
-    DATA(exp) = lth_string_table_utilities=>convert_without_trailing_blank( VALUE #(
-                ( `start: tokens                                        ` )
-                ( `    tokens: tokens token                             ` )
-                ( `        tokens: tokens token                         ` )
-                ( `            tokens: tokens token                     ` )
-                ( `                tokens: tokens token                 ` )
-                ( `                    tokens: token                    ` )
-                ( `                        token: spaces                ` )
-                ( `                            spaces: space            ` )
-                ( `                                space: ' '           ` )
-                ( `                                    token: ' '       ` )
-                ( `                    token: nonspaces                 ` )
-                ( `                        nonspaces: nonspaces nonspace` )
-                ( `                            nonspaces: nonspace      ` )
-                ( `                                nonspace: [^ ]       ` )
-                ( `                                    token: 'a'       ` )
-                ( `                            nonspace: [^ ]           ` )
-                ( `                                token: 'b'           ` )
-                ( `                token: spaces                        ` )
-                ( `                    spaces: spaces space             ` )
-                ( `                        spaces: space                ` )
-                ( `                            space: ' '               ` )
-                ( `                                token: ' '           ` )
-                ( `                        space: ' '                   ` )
-                ( `                            token: ' '               ` )
-                ( `            token: nonspaces                         ` )
-                ( `                nonspaces: nonspaces nonspace        ` )
-                ( `                    nonspaces: nonspace              ` )
-                ( `                        nonspace: [^ ]               ` )
-                ( `                            token: 'c'               ` )
-                ( `                    nonspace: [^ ]                   ` )
-                ( `                        token: 'd'                   ` )
-                ( `        token: spaces                                ` )
-                ( `            spaces: space                            ` )
-                ( `                space: ' '                           ` )
-                ( `                    token: ' '                       ` ) ) ).
+    DATA(exp) = `` && |\n|
+             && `` && |\n|
+             && `` && |\n|.
 
     cl_abap_unit_assert=>assert_equals( act = act
                                         exp = exp ).
@@ -305,44 +273,43 @@ CLASS ltc_tokenizer IMPLEMENTATION.
 
     ENDTRY.
 
-    DATA(act) = parser->get_ast_as_string_table( ).
+    DATA(act) = zcl_ctxfreegram_utilities=>render_table( parser->get_ast_as_string_table( ) ).
 
-    DATA(exp) = lth_string_table_utilities=>convert_without_trailing_blank( VALUE #(
-                ( `start: tokens                                        ` )
-                ( `    tokens: tokens token                             ` )
-                ( `        tokens: tokens token                         ` )
-                ( `            tokens: tokens token                     ` )
-                ( `                tokens: tokens token                 ` )
-                ( `                    tokens: token                    ` )
-                ( `                        token: spaces                ` )
-                ( `                            spaces: space            ` )
-                ( `                                space: ' '           ` )
-                ( `                                    token: ' '       ` )
-                ( `                    token: nonspaces                 ` )
-                ( `                        nonspaces: nonspaces nonspace` )
-                ( `                            nonspaces: nonspace      ` )
-                ( `                                nonspace: 'x'        ` )
-                ( `                                    token: 'x'       ` )
-                ( `                            nonspace: 'x'            ` )
-                ( `                                token: 'x'           ` )
-                ( `                token: spaces                        ` )
-                ( `                    spaces: spaces space             ` )
-                ( `                        spaces: space                ` )
-                ( `                            space: ' '               ` )
-                ( `                                token: ' '           ` )
-                ( `                        space: ' '                   ` )
-                ( `                            token: ' '               ` )
-                ( `            token: nonspaces                         ` )
-                ( `                nonspaces: nonspaces nonspace        ` )
-                ( `                    nonspaces: nonspace              ` )
-                ( `                        nonspace: 'x'                ` )
-                ( `                            token: 'x'               ` )
-                ( `                    nonspace: 'x'                    ` )
-                ( `                        token: 'x'                   ` )
-                ( `        token: spaces                                ` )
-                ( `            spaces: space                            ` )
-                ( `                space: ' '                           ` )
-                ( `                    token: ' '                       ` ) ) ).
+    DATA(exp) = `start: tokens                                                ` && |\n|
+             && `    tokens: tokens token                                     ` && |\n|
+             && `        tokens: tokens token                                 ` && |\n|
+             && `            tokens: tokens token                             ` && |\n|
+             && `                tokens: tokens token                         ` && |\n|
+             && `                    tokens: token                            ` && |\n|
+             && `                        token: spaces                        ` && |\n|
+             && `                            spaces: space                    ` && |\n|
+             && `                                space: ' '                   ` && |\n|
+             && `                                    Offset 0, length 1: " "  ` && |\n|
+             && `                    token: nonspaces                         ` && |\n|
+             && `                        nonspaces: nonspaces nonspace        ` && |\n|
+             && `                            nonspaces: nonspace              ` && |\n|
+             && `                                nonspace: 'x'                ` && |\n|
+             && `                                    Offset 1, length 1: "x"  ` && |\n|
+             && `                            nonspace: 'x'                    ` && |\n|
+             && `                                Offset 2, length 1: "x"      ` && |\n|
+             && `                token: spaces                                ` && |\n|
+             && `                    spaces: spaces space                     ` && |\n|
+             && `                        spaces: space                        ` && |\n|
+             && `                            space: ' '                       ` && |\n|
+             && `                                Offset 3, length 1: " "      ` && |\n|
+             && `                        space: ' '                           ` && |\n|
+             && `                            Offset 4, length 1: " "          ` && |\n|
+             && `            token: nonspaces                                 ` && |\n|
+             && `                nonspaces: nonspaces nonspace                ` && |\n|
+             && `                    nonspaces: nonspace                      ` && |\n|
+             && `                        nonspace: 'x'                        ` && |\n|
+             && `                            Offset 5, length 1: "x"          ` && |\n|
+             && `                    nonspace: 'x'                            ` && |\n|
+             && `                        Offset 6, length 1: "x"              ` && |\n|
+             && `        token: spaces                                        ` && |\n|
+             && `            spaces: space                                    ` && |\n|
+             && `                space: ' '                                   ` && |\n|
+             && `                    Offset 7, length 1: " "                  ` && |\n|.
 
     cl_abap_unit_assert=>assert_equals( act = act
                                         exp = exp ).
@@ -374,17 +341,16 @@ CLASS ltc_wikipedia_example IMPLEMENTATION.
 
     parser->parse( zcl_ctxfreegram_tokenizer_1c=>create_from_string( string = '1+0' ) ).
 
-    DATA(act) = parser->get_ast_as_string_table( ).
+    DATA(act) = zcl_ctxfreegram_utilities=>render_table( parser->get_ast_as_string_table( ) ).
 
-    DATA(exp) = lth_string_table_utilities=>convert_without_trailing_blank( VALUE #(
-                ( `start: E                   ` )
-                ( `    E: E '+' B             ` )
-                ( `        E: B               ` )
-                ( `            B: '1'         ` )
-                ( `                token: '1' ` )
-                ( `        token: '+'         ` )
-                ( `        B: '0'             ` )
-                ( `            token: '0'     ` ) ) ).
+    DATA(exp) = `start: E                                 ` && |\n|
+             && `    E: E '+' B                           ` && |\n|
+             && `        E: B                             ` && |\n|
+             && `            B: '1'                       ` && |\n|
+             && `                Offset 0, length 1: "1"  ` && |\n|
+             && `        Offset 1, length 1: "+"          ` && |\n|
+             && `        B: '0'                           ` && |\n|
+             && `            Offset 2, length 1: "0"      ` && |\n|.
 
     cl_abap_unit_assert=>assert_equals( act = act
                                         exp = exp ).
@@ -395,21 +361,20 @@ CLASS ltc_wikipedia_example IMPLEMENTATION.
 
     parser->parse( zcl_ctxfreegram_tokenizer_1c=>create_from_string( string = '1+1+1' ) ).
 
-    DATA(act) = parser->get_ast_as_string_table( ).
+    DATA(act) = zcl_ctxfreegram_utilities=>render_table( parser->get_ast_as_string_table( ) ).
 
-    DATA(exp) = lth_string_table_utilities=>convert_without_trailing_blank( VALUE #(
-                ( `start: E                      ` )
-                ( `    E: E '+' B                ` )
-                ( `        E: E '+' B            ` )
-                ( `            E: B              ` )
-                ( `                B: '1'        ` )
-                ( `                    token: '1'` )
-                ( `            token: '+'        ` )
-                ( `            B: '1'            ` )
-                ( `                token: '1'    ` )
-                ( `        token: '+'            ` )
-                ( `        B: '1'                ` )
-                ( `            token: '1'        ` ) ) ).
+    DATA(exp) = `start: E                                     ` && |\n|
+             && `    E: E '+' B                               ` && |\n|
+             && `        E: E '+' B                           ` && |\n|
+             && `            E: B                             ` && |\n|
+             && `                B: '1'                       ` && |\n|
+             && `                    Offset 0, length 1: "1"  ` && |\n|
+             && `            Offset 1, length 1: "+"          ` && |\n|
+             && `            B: '1'                           ` && |\n|
+             && `                Offset 2, length 1: "1"      ` && |\n|
+             && `        Offset 3, length 1: "+"              ` && |\n|
+             && `        B: '1'                               ` && |\n|
+             && `            Offset 4, length 1: "1"          ` && |\n|.
 
     cl_abap_unit_assert=>assert_equals( act = act
                                         exp = exp ).
